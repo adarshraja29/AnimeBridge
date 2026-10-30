@@ -1,0 +1,35 @@
+{
+  "id": "openmovies",
+  "name": "Open Movies",
+  "pkg": "eu.kanade.tachiyomi.animeextension.en.openmovies",
+  "version": "14.1",
+  "code": 1,
+  "lang": "en",
+  "nsfw": 0,
+  "hasReadme": 0,
+  "hasChangelog": 0,
+  "class": "eu.kanade.tachiyomi.animeextension.en.openmovies.OpenMovies",
+  "sources": [
+    {
+      "id": 841920391823901,
+      "name": "Open Movies Archive",
+      "lang": "en",
+      "baseUrl": "https://download.blender.org"
+    }
+  ],
+  "capabilities": [
+    "search",
+    "metadata",
+    "episodes",
+    "playback",
+    "subtitles",
+    "audio_tracks",
+    "health_check",
+    "popular",
+    "latest_updates"
+  ],
+  "apk": "aniyomi-en.openmovies-v14.1.apk",
+  "icon": "res/mipmap-xxxhdpi/ic_launcher.png",
+  "description": "Authorized demonstration extension providing open-source Creative Commons animated films (Big Buck Bunny, Sintel, etc.).",
+  "license": "CC-BY-4.0"
+}

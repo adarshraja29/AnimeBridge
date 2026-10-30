@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/animebridge/animebridge/main/config/schema.json",
+  "title": "AnimeBridge Site Configuration Schema",
+  "description": "Strict JSON schema defining human-editable site configurations and connector mappings for AnimeBridge.",
+  "type": "object",
+  "required": [
+    "version",
+    "sites"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$",
+      "description": "Schema version (e.g., '1.0')"
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional human description of the site configuration registry"
+    },
+    "sites": {
+      "type": "array",
+      "description": "List of configured site entries",
+      "items": {
+        "$ref": "#/$defs/SiteEntry"
+      }
+    }
+  },
+  "$defs": {
+    "SiteEntry": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "homepage",
+        "connector_id",
+        "enabled",
+        "authorization",
+        "capabilities",
+        "language",
+        "connector_version",
+        "status"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+          "description": "Unique slug identifier for the site (lowercase alphanumeric with dashes)"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100,
+          "description": "Human-readable display name of the website or catalog"
+        },
+        "homepage": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https?://.+",
+          "description": "Primary canonical homepage URL of the site"
+        },
+        "connector_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+$",
+          "description": "Identifier of the connector implementation used by this site entry"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether this site integration is active in the repository registry"
+        },
+        "authorization": {
+          "type": "object",
+          "required": [
+            "type",
+            "notes"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "public_domain",
+                "creative_commons",
+                "authorized_partner",
+                "developer_owned",
+                "demonstration_mock",
+                "open_api"
+              ],
+              "description": "Legal authorization basis under which connector access is permitted"
+            },
+            "license": {
+              "type": "string",
+              "description": "Specific content license (e.g., 'CC-BY-4.0', 'CC0-1.0')"
+            },
+            "notes": {
+              "type": "string",
+              "minLength": 10,
+              "description": "Detailed notes on source authorization and compliance justification"
+            }
+          }
+        },
+        "capabilities": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "search",
+              "metadata",
+              "episodes",
+              "playback",
+              "subtitles",
+              "audio_tracks",
+              "health_check",
+              "latest_updates",
+              "popular"
+            ]
+          },
+          "description": "Capabilities natively supported and verified by the associated connector"
+        },
+        "language": {
+          "type": "object",
+          "required": [
+            "code",
+            "name"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "type": "string",
+              "pattern": "^[a-z]{2}(-[A-Z]{2})?$|^all$",
+              "description": "ISO 639-1 two-letter code (or 'all' for multi-language catalogues)"
+            },
+            "name": {
+              "type": "string",
+              "description": "Human-readable language name (e.g., 'English', 'Japanese', 'Multilingual')"
+            }
+          }
+        },
+        "api_endpoint": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https?://.+",
+          "description": "Optional custom API endpoint override if differing from homepage"
+        },
+        "metadata_mapping": {
+          "type": "object",
+          "description": "Optional mapping hints for source attributes",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "connector_version": {
+          "type": "string",
+          "pattern": "^(1[2-5])\\.[0-9]+$",
+          "description": "Connector version formatted as <libVersion>.<extVersion> (libVersion 12-15)"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "beta",
+            "maintenance",
+            "deprecated",
+            "demo"
+          ],
+          "description": "Current lifecycle and maintenance status of the integration"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional maintainer notes, caveats, or rate-limiting warnings"
+        }
+      }
+    }
+  }
+}

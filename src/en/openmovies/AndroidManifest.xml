@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="eu.kanade.tachiyomi.animeextension.en.openmovies">
+
+    <application
+        android:label="Aniyomi: Open Movies"
+        android:icon="@mipmap/ic_launcher">
+
+        <!-- Entry point class loaded by Dantotsu via PathClassLoader -->
+        <meta-data
+            android:name="tachiyomi.animeextension.class"
+            android:value="eu.kanade.tachiyomi.animeextension.en.openmovies.OpenMovies" />
+
+        <!-- NSFW Flag: 0 = Clean/Safe, 1 = 18+ -->
+        <meta-data
+            android:name="tachiyomi.animeextension.nsfw"
+            android:value="0" />
+
+        <meta-data
+            android:name="tachiyomi.animeextension.hasReadme"
+            android:value="0" />
+
+        <meta-data
+            android:name="tachiyomi.animeextension.hasChangelog"
+            android:value="0" />
+
+    </application>
+
+</manifest>

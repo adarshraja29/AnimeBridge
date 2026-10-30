@@ -1,0 +1,79 @@
+# ==============================================================================
+# AnimeBridge Site Configuration Specification
+# ==============================================================================
+# IMPORTANT ARCHITECTURAL NOTE:
+# Adding a website URL alone DOES NOT implement an integration in Dantotsu.
+#
+# Unlike simple RSS or bookmark feeds, anime media portals use distinct HTML
+# structures, custom JavaScript renderers, specialized video player tokens, or
+# private APIs. An integration requires:
+#   1. A site configuration entry below (metadata, legal authorization, capabilities).
+#   2. A corresponding verified connector implementation (under connectors/<connector_id>/)
+#      that conforms to the AnimeHttpSource / ParsedAnimeHttpSource contract.
+#   3. A compiled, tested Android extension package registered in the repository index.
+# ==============================================================================
+
+version: "1.0"
+description: "AnimeBridge Example Site Configuration Registry"
+
+sites:
+  # ----------------------------------------------------------------------------
+  # 1. Open Movies Archive (Demonstration & Reference Integration)
+  # ----------------------------------------------------------------------------
+  - id: "open-movies"
+    name: "Open Movies Archive"
+    homepage: "https://download.blender.org"
+    connector_id: "openmovies"
+    enabled: true
+    authorization:
+      type: "creative_commons"
+      license: "CC-BY-4.0"
+      notes: "Authorized public open-source films produced by Blender Studio (Big Buck Bunny, Sintel, Tears of Steel, Cosmos Laundromat). Publicly redistributable with attribution."
+    capabilities:
+      - "search"
+      - "metadata"
+      - "episodes"
+      - "playback"
+      - "subtitles"
+      - "audio_tracks"
+      - "health_check"
+      - "popular"
+      - "latest_updates"
+    language:
+      code: "en"
+      name: "English"
+    api_endpoint: "https://raw.githubusercontent.com/animebridge/fixtures/main/openmovies/catalog.json"
+    metadata_mapping:
+      title: "film_title"
+      synopsis: "summary"
+      thumbnail: "poster_url"
+      release_year: "year"
+    connector_version: "14.1"
+    status: "active"
+    notes: "Demonstration connector for automated tests and baseline reference in Dantotsu."
+
+  # ----------------------------------------------------------------------------
+  # 2. Demonstration Mock Connector (Template for New Integrations)
+  # ----------------------------------------------------------------------------
+  - id: "demo-mock-partner"
+    name: "Demo Partner Catalog"
+    homepage: "https://partner.example.org"
+    connector_id: "demopartner"
+    enabled: false
+    authorization:
+      type: "demonstration_mock"
+      license: "MIT"
+      notes: "Fixture-backed demonstration catalog for testing pagination, error resilience, and HTTP fallbacks without touching live networks."
+    capabilities:
+      - "search"
+      - "metadata"
+      - "episodes"
+      - "playback"
+      - "health_check"
+    language:
+      code: "all"
+      name: "Multilingual"
+    api_endpoint: "https://partner.example.org/api/v1"
+    connector_version: "14.1"
+    status: "demo"
+    notes: "Disabled by default. Serves as a contract verification template."

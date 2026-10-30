@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/animebridge/animebridge/main/connectors/manifest.schema.json",
+  "title": "AnimeBridge Connector Manifest Schema",
+  "description": "Schema defining metadata, packaging requirements, and capability declarations for an AnimeBridge connector.",
+  "type": "object",
+  "required": [
+    "id",
+    "name",
+    "pkg",
+    "version",
+    "code",
+    "lang",
+    "nsfw",
+    "class",
+    "sources",
+    "capabilities",
+    "apk",
+    "icon"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+$",
+      "description": "Unique connector identifier"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 100,
+      "description": "Display name of the extension (without 'Aniyomi: ' prefix in manifest)"
+    },
+    "pkg": {
+      "type": "string",
+      "pattern": "^eu\\.kanade\\.tachiyomi\\.animeextension\\.[a-z]{2,5}\\.[a-z0-9_]+$",
+      "description": "Official Android Application Package ID"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(1[2-5])\\.[0-9]+$",
+      "description": "Extension version formatted as <libVersion>.<extVersion> (libVersion 12-15)"
+    },
+    "code": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Android versionCode integer"
+    },
+    "lang": {
+      "type": "string",
+      "pattern": "^[a-z]{2}(-[A-Z]{2})?$|^all$",
+      "description": "ISO 639-1 language code or 'all'"
+    },
+    "nsfw": {
+      "type": "integer",
+      "enum": [0, 1],
+      "description": "0 = Clean, 1 = 18+ Adult"
+    },
+    "hasReadme": {
+      "type": "integer",
+      "enum": [0, 1],
+      "default": 0
+    },
+    "hasChangelog": {
+      "type": "integer",
+      "enum": [0, 1],
+      "default": 0
+    },
+    "class": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_.]+$",
+      "description": "Fully qualified class name of the AnimeHttpSource entry point"
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "lang", "baseUrl"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Stable 64-bit integer ID for the catalog source"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 2
+          },
+          "lang": {
+            "type": "string"
+          },
+          "baseUrl": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https?://.+"
+          }
+        }
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "search",
+          "metadata",
+          "episodes",
+          "playback",
+          "subtitles",
+          "audio_tracks",
+          "health_check",
+          "latest_updates",
+          "popular"
+        ]
+      }
+    },
+    "apk": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_.-]+\\.apk$",
+      "description": "Filename of compiled APK artifact in repo/apk/"
+    },
+    "icon": {
+      "type": "string",
+      "pattern": ".*\\.png$",
+      "description": "Relative path to square 512x512 or 192x192 PNG icon"
+    },
+    "description": {
+      "type": "string"
+    },
+    "license": {
+      "type": "string"
+    }
+  }
+}

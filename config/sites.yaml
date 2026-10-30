@@ -1,0 +1,36 @@
+# AnimeBridge Active Site Configuration
+version: "1.0"
+description: "Active Site Configuration Registry for AnimeBridge"
+
+sites:
+  - id: "open-movies"
+    name: "Open Movies Archive"
+    homepage: "https://download.blender.org"
+    connector_id: "openmovies"
+    enabled: true
+    authorization:
+      type: "creative_commons"
+      license: "CC-BY-4.0"
+      notes: "Authorized public open-source films produced by Blender Studio (Big Buck Bunny, Sintel, Tears of Steel, Cosmos Laundromat). Publicly redistributable with attribution."
+    capabilities:
+      - "search"
+      - "metadata"
+      - "episodes"
+      - "playback"
+      - "subtitles"
+      - "audio_tracks"
+      - "health_check"
+      - "popular"
+      - "latest_updates"
+    language:
+      code: "en"
+      name: "English"
+    api_endpoint: "https://download.blender.org/demo/movies/"
+    metadata_mapping:
+      title: "film_title"
+      synopsis: "summary"
+      thumbnail: "poster_url"
+      release_year: "year"
+    connector_version: "14.1"
+    status: "active"
+    notes: "Demonstration connector for automated tests and baseline reference in Dantotsu."

@@ -1,0 +1,102 @@
+name: AnimeBridge CI & Extension Build Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  # ----------------------------------------------------------------------------
+  # Job 1: Validation, Schema Linting & Unit/Contract Tests
+  # ----------------------------------------------------------------------------
+  validate-and-test:
+    name: Validate Schemas & Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python Tooling Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest jsonschema pyyaml pillow
+
+      - name: Validate Site Configuration (config/sites.yaml)
+        run: python scripts/validate_sites.py --verbose
+
+      - name: Validate Extension Manifests (src/**/manifest.json)
+        run: python scripts/validate_manifests.py --verbose
+
+      - name: Run Test Suite
+        run: pytest tests/ -v
+
+  # ----------------------------------------------------------------------------
+  # Job 2: Android SDK & Kotlin Extension Compilation
+  # ----------------------------------------------------------------------------
+  build-extensions:
+    name: Build Android Extensions (APK)
+    needs: validate-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Grant Execute Permissions for Gradle Wrapper
+        run: chmod +x gradlew || true
+
+      - name: Package Distribution Artifacts & Build Registry
+        run: |
+          pip install jsonschema pyyaml pillow
+          python scripts/build_registry.py --verbose
+
+      - name: Upload Repository Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: animebridge-repo
+          path: repo/
+
+  # ----------------------------------------------------------------------------
+  # Job 3: Publish to GitHub Pages / Release Branch (Only on Main)
+  # ----------------------------------------------------------------------------
+  publish:
+    name: Publish Repository Index
+    needs: build-extensions
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Built Repository Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: animebridge-repo
+          path: repo/
+
+      - name: Deploy to Publication Branch (repo branch)
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: repo
+          branch: repo
+          target-folder: .
+          commit-message: "Deploy updated extension repository index [skip ci]"
