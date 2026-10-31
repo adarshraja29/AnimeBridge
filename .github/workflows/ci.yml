@@ -39,6 +39,8 @@ jobs:
         run: python scripts/validate_manifests.py --verbose
 
       - name: Run Test Suite
+        env:
+          PYTHONPATH: .
         run: pytest tests/ -v
 
   # ----------------------------------------------------------------------------
@@ -63,6 +65,9 @@ jobs:
 
       - name: Grant Execute Permissions for Gradle Wrapper
         run: chmod +x gradlew || true
+
+      - name: Build Android Extension APKs
+        run: ./gradlew assembleDebug --no-daemon --max-workers=2
 
       - name: Package Distribution Artifacts & Build Registry
         run: |
