@@ -268,3 +268,61 @@ def test_malformed_json_raises_parse_error(tmp_path):
     broken_conn = OpenMoviesTestConnector(fixture_path=bad_fixture)
     with pytest.raises(ParseError):
         broken_conn.search("test")
+
+
+def test_source_id_matches_aniyomi_specification():
+    """Verify source ID matches Aniyomi generateId(name.lowercase(), lang, versionId) formula."""
+    import hashlib
+    import struct
+    import json
+
+    manifest_path = Path(__file__).parent.parent / "src" / "en" / "openmovies" / "manifest.json"
+    with open(manifest_path, "r", encoding="utf-8") as f:
+        manifest = json.load(f)
+
+    src = manifest["sources"][0]
+    expected_key = f"{src['name'].lower()}/{src['lang']}/1".encode("utf-8")
+    digest = hashlib.md5(expected_key).digest()
+    expected_id = struct.unpack(">q", digest[:8])[0] & 0x7FFFFFFFFFFFFFFF
+
+    assert expected_id == 2462941301767738396
+    assert src["id"] == expected_id
+
+
+def test_all_catalog_movies_have_valid_metadata(connector):
+    """Verify all items in catalog have valid titles, genres, release years, episodes, and streams."""
+    items = connector._load_catalog()
+    assert len(items) >= 6
+
+    for item in items:
+        assert item["id"]
+        assert item["title"]
+        assert item["url"].startswith("https://") or item["url"].startswith("/")
+        assert len(item.get("genres", [])) >= 1
+        assert item.get("releaseYear", 0) >= 2000
+        assert item.get("status") in ["COMPLETED", "ONGOING"]
+        assert len(item.get("episodes", [])) >= 1
+
+        for ep in item["episodes"]:
+            assert ep["id"]
+            assert ep["title"]
+            assert ep["videoUrl"]
+            assert len(ep.get("streams", [])) >= 1
+            for stream in ep["streams"]:
+                assert stream["quality"]
+                assert stream["url"].startswith("https://") or stream["url"].startswith("http://")
+
+
+def test_apk_contains_openmovies_and_configurable_interface():
+    """Verify compiled APK contains OpenMovies class and ConfigurableAnimeSource reference in DEX."""
+    import zipfile
+
+    apk_path = Path(__file__).parent.parent / "repo" / "apk" / "aniyomi-en.openmovies-v14.1.apk"
+    assert apk_path.exists(), "Compiled APK must exist in repo/apk/"
+
+    with zipfile.ZipFile(apk_path) as z:
+        all_dex_data = b"".join(z.read(f) for f in z.namelist() if f.endswith(".dex"))
+
+    assert b"Leu/kanade/tachiyomi/animeextension/en/openmovies/OpenMovies;" in all_dex_data
+    assert b"ConfigurableAnimeSource" in all_dex_data
+

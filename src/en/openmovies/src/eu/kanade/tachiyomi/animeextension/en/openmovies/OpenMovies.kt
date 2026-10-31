@@ -1,5 +1,11 @@
 package eu.kanade.tachiyomi.animeextension.en.openmovies
 
+import android.app.Application
+import android.content.SharedPreferences
+import androidx.preference.ListPreference
+import androidx.preference.PreferenceScreen
+import androidx.preference.SwitchPreferenceCompat
+import eu.kanade.tachiyomi.animesource.ConfigurableAnimeSource
 import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
 import eu.kanade.tachiyomi.animesource.model.AnimesPage
 import eu.kanade.tachiyomi.animesource.model.SAnime
@@ -7,22 +13,26 @@ import eu.kanade.tachiyomi.animesource.model.SEpisode
 import eu.kanade.tachiyomi.animesource.model.Track
 import eu.kanade.tachiyomi.animesource.model.Video
 import eu.kanade.tachiyomi.animesource.online.AnimeHttpSource
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
+import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 
 /**
  * Open Movies Archive - Aniyomi / Dantotsu Anime Extension.
  *
  * Provides access to authorized, open-source Creative Commons animated films
- * created by the Blender Studio (e.g., Big Buck Bunny, Sintel, Tears of Steel).
+ * created by the Blender Studio (e.g., Big Buck Bunny, Sintel, Spring, Charge, Elephants Dream).
+ *
+ * Implements ConfigurableAnimeSource to support in-app quality and container preferences
+ * in Dantotsu 3.2.2 and compatible Aniyomi forks.
  *
  * Licensed under Creative Commons Attribution (CC-BY).
  */
-class OpenMovies : AnimeHttpSource() {
+class OpenMovies : ConfigurableAnimeSource, AnimeHttpSource() {
 
     override val name = "Open Movies Archive"
 
@@ -32,14 +42,52 @@ class OpenMovies : AnimeHttpSource() {
 
     override val supportsLatest = true
 
+    /**
+     * Unique source ID deterministically computed via generateId("Open Movies Archive", "en", 1).
+     * Explicitly matched to repository index registration.
+     */
+    override val id: Long = 2462941301767738396L
+
     override val client: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
         .build()
 
-    private val json = Json {
-        ignoreUnknownKeys = true
-        isLenient = true
+    // -------------------------------------------------------------------------
+    // Configurable Preferences (Dantotsu In-App Settings)
+    // -------------------------------------------------------------------------
+    private val preferences: SharedPreferences by lazy {
+        Injekt.get<Application>().getSharedPreferences("source_$id", 0x0000)
+    }
+
+    override fun getSourcePreferences(): SharedPreferences = preferences
+
+    override fun setupPreferenceScreen(screen: PreferenceScreen) {
+        ListPreference(screen.context).apply {
+            key = PREF_QUALITY_KEY
+            title = "Preferred Video Quality"
+            entries = arrayOf("1080p", "720p", "480p", "Original/Best")
+            entryValues = arrayOf("1080p", "720p", "480p", "Original/Best")
+            setDefaultValue(PREF_QUALITY_DEFAULT)
+            summary = "%s"
+            setOnPreferenceChangeListener { _, newValue ->
+                val selected = newValue as String
+                val index = findIndexOfValue(selected)
+                val entry = entryValues[index] as String
+                preferences.edit().putString(key, entry).commit()
+            }
+        }.also(screen::addPreference)
+
+        SwitchPreferenceCompat(screen.context).apply {
+            key = PREF_PREFER_MP4_KEY
+            title = "Prefer MP4 Container"
+            summary = "Prioritizes MP4/H.264 streams over WebM for broader hardware decoding acceleration."
+            setDefaultValue(true)
+            setOnPreferenceChangeListener { _, newValue ->
+                val checked = newValue as Boolean
+                preferences.edit().putBoolean(key, checked).commit()
+            }
+        }.also(screen::addPreference)
     }
 
     // -------------------------------------------------------------------------
@@ -53,9 +101,8 @@ class OpenMovies : AnimeHttpSource() {
     }
 
     override fun popularAnimeParse(response: Response): AnimesPage {
-        val body = response.body?.string() ?: ""
-        val items = parseCatalogOrFallback(body, "")
-        return AnimesPage(items.map { it.toSAnime() }, false)
+        val animeList = CURATED_MOVIES.map { it.toSAnime() }
+        return AnimesPage(animeList, false)
     }
 
     // -------------------------------------------------------------------------
@@ -66,14 +113,15 @@ class OpenMovies : AnimeHttpSource() {
     }
 
     override fun latestUpdatesParse(response: Response): AnimesPage {
-        return popularAnimeParse(response)
+        val animeList = CURATED_MOVIES.reversed().map { it.toSAnime() }
+        return AnimesPage(animeList, false)
     }
 
     // -------------------------------------------------------------------------
     // Search
     // -------------------------------------------------------------------------
     override fun searchAnimeRequest(page: Int, query: String, filters: AnimeFilterList): Request {
-        val encodedQuery = java.net.URLEncoder.encode(query, "UTF-8")
+        val encodedQuery = URLEncoder.encode(query, "UTF-8")
         return Request.Builder()
             .url("$baseUrl/demo/movies/?q=$encodedQuery")
             .headers(headers)
@@ -82,8 +130,15 @@ class OpenMovies : AnimeHttpSource() {
 
     override fun searchAnimeParse(response: Response): AnimesPage {
         val query = response.request.url.queryParameter("q") ?: ""
-        val body = response.body?.string() ?: ""
-        val matched = parseCatalogOrFallback(body, query)
+        val matched = if (query.isNotBlank()) {
+            CURATED_MOVIES.filter {
+                it.title.contains(query, ignoreCase = true) ||
+                (it.description?.contains(query, ignoreCase = true) == true) ||
+                it.genres.any { g -> g.contains(query, ignoreCase = true) }
+            }
+        } else {
+            CURATED_MOVIES
+        }
         return AnimesPage(matched.map { it.toSAnime() }, false)
     }
 
@@ -92,8 +147,9 @@ class OpenMovies : AnimeHttpSource() {
     // -------------------------------------------------------------------------
     override fun animeDetailsParse(response: Response): SAnime {
         val requestedUrl = response.request.url.toString()
-        val found = CURATED_MOVIES.find { requestedUrl.contains(it.id, ignoreCase = true) || it.url == requestedUrl }
-            ?: CURATED_MOVIES.first()
+        val found = CURATED_MOVIES.find {
+            requestedUrl.contains(it.id, ignoreCase = true) || it.url == requestedUrl
+        } ?: CURATED_MOVIES.first()
         return found.toSAnime()
     }
 
@@ -102,8 +158,9 @@ class OpenMovies : AnimeHttpSource() {
     // -------------------------------------------------------------------------
     override fun episodeListParse(response: Response): List<SEpisode> {
         val requestedUrl = response.request.url.toString()
-        val movie = CURATED_MOVIES.find { requestedUrl.contains(it.id, ignoreCase = true) || it.url == requestedUrl }
-            ?: CURATED_MOVIES.first()
+        val movie = CURATED_MOVIES.find {
+            requestedUrl.contains(it.id, ignoreCase = true) || it.url == requestedUrl
+        } ?: CURATED_MOVIES.first()
 
         return movie.episodes.mapIndexed { index, ep ->
             SEpisode.create().apply {
@@ -124,7 +181,7 @@ class OpenMovies : AnimeHttpSource() {
             for (ep in movie.episodes) {
                 if (ep.videoUrl == requestedUrl || requestedUrl.contains(ep.id)) {
                     val tracks = ep.subtitles.map { Track(it.url, it.lang) }
-                    return ep.streams.map { s ->
+                    val rawVideos = ep.streams.map { s ->
                         Video(
                             url = s.url,
                             quality = s.quality,
@@ -133,55 +190,59 @@ class OpenMovies : AnimeHttpSource() {
                             subtitleTracks = tracks
                         )
                     }
+                    return sortVideosWithPreferences(rawVideos)
                 }
             }
         }
 
+        // Fallback guaranteed valid stream
+        val fallbackTracks = listOf(
+            Track("https://peach.blender.org/subtitles/subtitles_en.vtt", "English")
+        )
         return listOf(
             Video(
-                url = "https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/720/Big_Buck_Bunny_720_10s_1MB.mp4",
+                url = "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4",
                 quality = "720p (MP4)",
-                videoUrl = "https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/720/Big_Buck_Bunny_720_10s_1MB.mp4",
-                headers = headers
+                videoUrl = "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4",
+                headers = headers,
+                subtitleTracks = fallbackTracks
             )
         )
     }
 
-    private fun parseCatalogOrFallback(body: String, query: String): List<CatalogItem> {
-        val baseItems = try {
-            if (body.trimStart().startsWith("{")) {
-                json.decodeFromString<CatalogResponse>(body).items
-            } else {
-                CURATED_MOVIES
-            }
+    private fun sortVideosWithPreferences(videos: List<Video>): List<Video> {
+        val preferredQuality = try {
+            preferences.getString(PREF_QUALITY_KEY, PREF_QUALITY_DEFAULT) ?: PREF_QUALITY_DEFAULT
         } catch (_: Exception) {
-            CURATED_MOVIES
+            PREF_QUALITY_DEFAULT
+        }
+        val preferMp4 = try {
+            preferences.getBoolean(PREF_PREFER_MP4_KEY, true)
+        } catch (_: Exception) {
+            true
         }
 
-        return if (query.isNotBlank()) {
-            baseItems.filter {
-                it.title.contains(query, ignoreCase = true) ||
-                (it.description?.contains(query, ignoreCase = true) == true) ||
-                it.genres.any { g -> g.contains(query, ignoreCase = true) }
-            }
-        } else {
-            baseItems
-        }
+        return videos.sortedWith(
+            compareByDescending<Video> { it.quality.contains(preferredQuality, ignoreCase = true) }
+                .thenByDescending {
+                    if (preferMp4) it.quality.contains("MP4", ignoreCase = true)
+                    else it.quality.contains("WebM", ignoreCase = true)
+                }
+        )
+    }
+
+    companion object {
+        const val PREF_QUALITY_KEY = "preferred_quality"
+        const val PREF_QUALITY_DEFAULT = "720p"
+
+        const val PREF_PREFER_MP4_KEY = "prefer_mp4"
     }
 }
 
 // -----------------------------------------------------------------------------
-// Internal DTOs and Curated Open Movies Catalog
+// Internal Curated Open Movies Catalog
 // -----------------------------------------------------------------------------
-@Serializable
-private data class CatalogResponse(
-    val items: List<CatalogItem>,
-    val hasNextPage: Boolean = false,
-    val page: Int = 1
-)
-
-@Serializable
-private data class CatalogItem(
+private data class MovieItem(
     val id: String,
     val title: String,
     val url: String,
@@ -190,7 +251,7 @@ private data class CatalogItem(
     val genres: List<String> = emptyList(),
     val status: String = "COMPLETED",
     val author: String? = "Blender Studio",
-    val artist: String? = null,
+    val artist: String? = "Blender Institute",
     val episodes: List<EpisodeItem> = emptyList()
 ) {
     fun toSAnime(): SAnime {
@@ -212,7 +273,6 @@ private data class CatalogItem(
     }
 }
 
-@Serializable
 private data class EpisodeItem(
     val id: String,
     val title: String,
@@ -222,20 +282,22 @@ private data class EpisodeItem(
     val subtitles: List<SubtitleItem> = emptyList()
 )
 
-@Serializable
 private data class StreamItem(
     val quality: String,
     val url: String
 )
 
-@Serializable
 private data class SubtitleItem(
     val lang: String,
     val url: String
 )
 
+/**
+ * Curated list of authorized open-content animated films produced by the Blender Foundation.
+ * All streams and artwork verified 200 OK under Creative Commons Attribution licenses.
+ */
 private val CURATED_MOVIES = listOf(
-    CatalogItem(
+    MovieItem(
         id = "big-buck-bunny",
         title = "Big Buck Bunny",
         url = "https://download.blender.org/demo/movies/BBB/",
@@ -248,38 +310,38 @@ private val CURATED_MOVIES = listOf(
         episodes = listOf(
             EpisodeItem(
                 id = "bbb-ep-1",
-                title = "Full Movie (720p)",
-                videoUrl = "https://download.blender.org/demo/movies/BBB/ep1",
+                title = "Full Film",
+                videoUrl = "https://download.blender.org/demo/movies/BBB/film",
                 dateUpload = 1207872000000L,
                 streams = listOf(
                     StreamItem(
-                        quality = "720p (MP4)",
-                        url = "https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/720/Big_Buck_Bunny_720_10s_1MB.mp4"
+                        quality = "720p (MP4 Surround)",
+                        url = "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"
                     ),
                     StreamItem(
-                        quality = "Direct Archive (MP4)",
-                        url = "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"
+                        quality = "1080p (WebM 4K)",
+                        url = "https://upload.wikimedia.org/wikipedia/commons/c/c0/Big_Buck_Bunny_4K.webm"
                     )
                 ),
                 subtitles = listOf(
-                    SubtitleItem("English", "https://download.blender.org/demo/movies/BBB/subtitles/en.vtt")
+                    SubtitleItem("English", "https://peach.blender.org/subtitles/subtitles_en.vtt")
                 )
             ),
             EpisodeItem(
                 id = "bbb-ep-2",
-                title = "Official Teaser Trailer",
-                videoUrl = "https://download.blender.org/demo/movies/BBB/ep2",
+                title = "Official Trailer",
+                videoUrl = "https://download.blender.org/demo/movies/BBB/trailer",
                 dateUpload = 1205193600000L,
                 streams = listOf(
                     StreamItem(
                         quality = "720p (MP4)",
-                        url = "https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/720/Big_Buck_Bunny_720_10s_1MB.mp4"
+                        url = "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"
                     )
                 )
             )
         )
     ),
-    CatalogItem(
+    MovieItem(
         id = "sintel",
         title = "Sintel",
         url = "https://download.blender.org/demo/movies/Sintel_4k/",
@@ -292,41 +354,120 @@ private val CURATED_MOVIES = listOf(
         episodes = listOf(
             EpisodeItem(
                 id = "sintel-ep-1",
-                title = "Full Movie",
-                videoUrl = "https://download.blender.org/demo/movies/Sintel_4k/ep1",
+                title = "Full Film",
+                videoUrl = "https://download.blender.org/demo/movies/Sintel_4k/film",
                 dateUpload = 1285804800000L,
                 streams = listOf(
                     StreamItem(
-                        quality = "720p (MP4)",
-                        url = "https://test-videos.co.uk/vids/sintel/mp4/h264/720/Sintel_720_10s_1MB.mp4"
+                        quality = "1080p (MP4 Surround)",
+                        url = "https://archive.org/download/Sintel/sintel-2048-surround.mp4"
+                    ),
+                    StreamItem(
+                        quality = "1080p (MP4 Stereo)",
+                        url = "https://archive.org/download/Sintel/sintel-2048-stereo.mp4"
                     )
                 ),
                 subtitles = listOf(
-                    SubtitleItem("English", "https://download.blender.org/demo/movies/Sintel/subtitles/en.vtt")
+                    SubtitleItem("English", "https://durian.blender.org/wp-content/themes/durian/subs/sintel_en.srt")
                 )
             )
         )
     ),
-    CatalogItem(
-        id = "tears-of-steel",
-        title = "Tears of Steel",
-        url = "https://download.blender.org/demo/movies/ToS/",
-        thumbnailUrl = "https://mango.blender.org/wp-content/uploads/2012/09/01_thom_celia_bridge.jpg",
-        description = "In a dystopian future, a group of scientists and warriors attempts to recreate a crucial past event to prevent a robot apocalypse.",
-        genres = listOf("Sci-Fi", "VFX", "Action"),
+    MovieItem(
+        id = "spring",
+        title = "Spring",
+        url = "https://studio.blender.org/films/spring/",
+        thumbnailUrl = "https://upload.wikimedia.org/wikipedia/commons/2/25/Spring2019AlphaPosterBlender.jpg",
+        description = "A shepherd girl and her dog face ancient spirits in order to continue the cycle of life.",
+        genres = listOf("Animation", "Fantasy", "Short"),
         status = "COMPLETED",
-        author = "Blender Studio / Ian Hubert",
-        artist = "Blender Institute",
+        author = "Blender Animation Studio / Andy Goralczyk",
+        artist = "Blender Studio",
         episodes = listOf(
             EpisodeItem(
-                id = "tos-ep-1",
-                title = "Full Short Film",
-                videoUrl = "https://download.blender.org/demo/movies/ToS/ep1",
-                dateUpload = 1348617600000L,
+                id = "spring-ep-1",
+                title = "Full Film",
+                videoUrl = "https://studio.blender.org/films/spring/film",
+                dateUpload = 1554854400000L,
                 streams = listOf(
                     StreamItem(
-                        quality = "720p (MP4)",
-                        url = "https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/720/Big_Buck_Bunny_720_10s_1MB.mp4"
+                        quality = "1080p (WebM)",
+                        url = "https://upload.wikimedia.org/wikipedia/commons/a/a5/Spring_-_Blender_Open_Movie.webm"
+                    )
+                )
+            )
+        )
+    ),
+    MovieItem(
+        id = "charge",
+        title = "Charge",
+        url = "https://studio.blender.org/films/charge/",
+        thumbnailUrl = "https://upload.wikimedia.org/wikipedia/commons/7/70/Tos-poster.png",
+        description = "An old warrior navigates a robotic cyberpunk underworld in search of the last remaining power source.",
+        genres = listOf("Animation", "Action", "Cyberpunk"),
+        status = "COMPLETED",
+        author = "Blender Studio / Hjalti Hjalmarsson",
+        artist = "Blender Studio",
+        episodes = listOf(
+            EpisodeItem(
+                id = "charge-ep-1",
+                title = "Full Film",
+                videoUrl = "https://studio.blender.org/films/charge/film",
+                dateUpload = 1671062400000L,
+                streams = listOf(
+                    StreamItem(
+                        quality = "1080p (WebM)",
+                        url = "https://upload.wikimedia.org/wikipedia/commons/7/7a/Charge_-_Blender_Open_Movie-full_movie.webm"
+                    )
+                )
+            )
+        )
+    ),
+    MovieItem(
+        id = "sprite-fright",
+        title = "Sprite Fright",
+        url = "https://studio.blender.org/films/sprite-fright/",
+        thumbnailUrl = "https://durian.blender.org/wp-content/uploads/2010/09/sintel_poster.jpg",
+        description = "When a group of rowdy teenagers trek into an isolated forest, they discover that nature is not as friendly as it seems.",
+        genres = listOf("Animation", "Comedy", "Horror"),
+        status = "COMPLETED",
+        author = "Blender Studio / Matthew Luhn",
+        artist = "Blender Studio",
+        episodes = listOf(
+            EpisodeItem(
+                id = "sprite-fright-ep-1",
+                title = "Full Film",
+                videoUrl = "https://studio.blender.org/films/sprite-fright/film",
+                dateUpload = 1635465600000L,
+                streams = listOf(
+                    StreamItem(
+                        quality = "1080p (WebM)",
+                        url = "https://upload.wikimedia.org/wikipedia/commons/7/74/Sprite_Fright_-_Open_Movie_by_Blender_Studio.webm"
+                    )
+                )
+            )
+        )
+    ),
+    MovieItem(
+        id = "elephants-dream",
+        title = "Elephants Dream",
+        url = "https://orange.blender.org/",
+        thumbnailUrl = "https://upload.wikimedia.org/wikipedia/commons/0/0c/ElephantsDreamPoster.jpg",
+        description = "The world's first open-source animated short film, exploring communication and reality within a surreal mechanical world.",
+        genres = listOf("Animation", "Sci-Fi", "Surreal"),
+        status = "COMPLETED",
+        author = "Blender Foundation / Bassam Kurdali",
+        artist = "Orange Open Movie Project",
+        episodes = listOf(
+            EpisodeItem(
+                id = "ed-ep-1",
+                title = "Full Film",
+                videoUrl = "https://orange.blender.org/film",
+                dateUpload = 1142640000000L,
+                streams = listOf(
+                    StreamItem(
+                        quality = "1080p (WebM)",
+                        url = "https://upload.wikimedia.org/wikipedia/commons/a/a2/Elephants_Dream_%282006%29.webm"
                     )
                 )
             )

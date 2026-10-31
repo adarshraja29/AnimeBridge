@@ -51,6 +51,8 @@ android {
 dependencies {
     compileOnly(files("$rootDir/core/libs/extensions-lib-14.jar"))
     implementation(project(":lib:playlistutils"))
+    compileOnly("androidx.preference:preference:1.2.1")
+    compileOnly("uy.kohesive.injekt:injekt-core:1.16.1")
     compileOnly("com.squareup.okhttp3:okhttp:4.12.0")
     compileOnly("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
     compileOnly("org.jsoup:jsoup:1.17.2")

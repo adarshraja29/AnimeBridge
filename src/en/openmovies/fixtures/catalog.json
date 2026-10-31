@@ -21,7 +21,7 @@
           "streams": [
             {
               "quality": "1080p",
-              "url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+              "url": "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"
             },
             {
               "quality": "720p",
@@ -74,7 +74,7 @@
           "streams": [
             {
               "quality": "1080p",
-              "url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4"
+              "url": "https://archive.org/download/Sintel/sintel-2048-surround.mp4"
             }
           ],
           "subtitles": [
@@ -106,7 +106,7 @@
           "streams": [
             {
               "quality": "1080p",
-              "url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4"
+              "url": "https://upload.wikimedia.org/wikipedia/commons/a/a5/Spring_-_Blender_Open_Movie.webm"
             }
           ],
           "subtitles": [
@@ -115,6 +115,114 @@
               "url": "https://download.blender.org/demo/movies/TOS/subtitles/en.vtt"
             }
           ]
+        }
+      ]
+    },
+    {
+      "id": "spring",
+      "title": "Spring",
+      "url": "https://studio.blender.org/films/spring/",
+      "thumbnailUrl": "https://upload.wikimedia.org/wikipedia/commons/2/25/Spring2019AlphaPosterBlender.jpg",
+      "description": "A shepherd girl and her dog face ancient spirits in order to continue the cycle of life.",
+      "genres": ["Animation", "Fantasy", "Short"],
+      "status": "COMPLETED",
+      "author": "Blender Animation Studio / Andy Goralczyk",
+      "artist": "Blender Studio",
+      "releaseYear": 2019,
+      "episodes": [
+        {
+          "id": "spring-ep-1",
+          "title": "Full Film",
+          "videoUrl": "https://studio.blender.org/films/spring/film",
+          "dateUpload": 1554854400000,
+          "streams": [
+            {
+              "quality": "1080p",
+              "url": "https://upload.wikimedia.org/wikipedia/commons/a/a5/Spring_-_Blender_Open_Movie.webm"
+            }
+          ],
+          "subtitles": []
+        }
+      ]
+    },
+    {
+      "id": "charge",
+      "title": "Charge",
+      "url": "https://studio.blender.org/films/charge/",
+      "thumbnailUrl": "https://upload.wikimedia.org/wikipedia/commons/7/70/Tos-poster.png",
+      "description": "An old warrior navigates a robotic cyberpunk underworld in search of the last remaining power source.",
+      "genres": ["Animation", "Action", "Cyberpunk"],
+      "status": "COMPLETED",
+      "author": "Blender Studio / Hjalti Hjalmarsson",
+      "artist": "Blender Studio",
+      "releaseYear": 2022,
+      "episodes": [
+        {
+          "id": "charge-ep-1",
+          "title": "Full Film",
+          "videoUrl": "https://studio.blender.org/films/charge/film",
+          "dateUpload": 1671062400000,
+          "streams": [
+            {
+              "quality": "1080p",
+              "url": "https://upload.wikimedia.org/wikipedia/commons/7/7a/Charge_-_Blender_Open_Movie-full_movie.webm"
+            }
+          ],
+          "subtitles": []
+        }
+      ]
+    },
+    {
+      "id": "sprite-fright",
+      "title": "Sprite Fright",
+      "url": "https://studio.blender.org/films/sprite-fright/",
+      "thumbnailUrl": "https://durian.blender.org/wp-content/uploads/2010/09/sintel_poster.jpg",
+      "description": "When a group of rowdy teenagers trek into an isolated forest, they discover that nature is not as friendly as it seems.",
+      "genres": ["Animation", "Comedy", "Horror"],
+      "status": "COMPLETED",
+      "author": "Blender Studio / Matthew Luhn",
+      "artist": "Blender Studio",
+      "releaseYear": 2021,
+      "episodes": [
+        {
+          "id": "sprite-fright-ep-1",
+          "title": "Full Film",
+          "videoUrl": "https://studio.blender.org/films/sprite-fright/film",
+          "dateUpload": 1635465600000,
+          "streams": [
+            {
+              "quality": "1080p",
+              "url": "https://upload.wikimedia.org/wikipedia/commons/7/74/Sprite_Fright_-_Open_Movie_by_Blender_Studio.webm"
+            }
+          ],
+          "subtitles": []
+        }
+      ]
+    },
+    {
+      "id": "elephants-dream",
+      "title": "Elephants Dream",
+      "url": "https://orange.blender.org/",
+      "thumbnailUrl": "https://upload.wikimedia.org/wikipedia/commons/0/0c/ElephantsDreamPoster.jpg",
+      "description": "The world's first open-source animated short film, exploring communication and reality within a surreal mechanical world.",
+      "genres": ["Animation", "Sci-Fi", "Surreal"],
+      "status": "COMPLETED",
+      "author": "Blender Foundation / Bassam Kurdali",
+      "artist": "Orange Open Movie Project",
+      "releaseYear": 2006,
+      "episodes": [
+        {
+          "id": "ed-ep-1",
+          "title": "Full Film",
+          "videoUrl": "https://orange.blender.org/film",
+          "dateUpload": 1142640000000,
+          "streams": [
+            {
+              "quality": "1080p",
+              "url": "https://upload.wikimedia.org/wikipedia/commons/a/a2/Elephants_Dream_%282006%29.webm"
+            }
+          ],
+          "subtitles": []
         }
       ]
     }
