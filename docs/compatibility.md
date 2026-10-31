@@ -190,3 +190,43 @@ Users register custom repositories using the following verified in-app path:
    *(Alternatively, entering `https://raw.githubusercontent.com/<OWNER>/AnimeBridge/main/repo` will automatically be resolved to `/index.min.json` by Dantotsu's URI normalizer).*
 5. Dantotsu performs a `GET` request, decodes the JSON array, filters out incompatible `libVersion` entries, and populates the **Available Extensions** tab.
 6. When the user taps **Install**, Dantotsu downloads the `.apk` from `/apk/<apkName>`, invokes Android's package installer, and initializes the extension via `PathClassLoader`.
+
+---
+
+## 7. Dantotsu 3.2.2 Extension Recognition & Manifest Criteria
+
+On physical Android devices running Dantotsu 3.2.2, when an APK installs successfully through the system package installer but Dantotsu logs:
+```text
+Tried to load a package that wasn't a extension (eu.kanade.tachiyomi.animeextension.en.openmovies)
+```
+
+### 7.1 Root Cause (Verified in Dantotsu `ExtensionLoader.kt`)
+In Dantotsu 3.2.2, `ExtensionInstallReceiver` catches `ACTION_PACKAGE_ADDED` and invokes `loadAnimeExtensionFromPkgName(context, pkgName)`. This method evaluates:
+```kotlin
+if (!isPackageAnExtension(MediaType.ANIME, pkgInfo)) {
+    Logger.log("Tried to load a package that wasn't a extension ($pkgName)")
+    return AnimeLoadResult.Error
+}
+```
+Inside `isPackageAnExtension`:
+```kotlin
+pkgInfo.reqFeatures.orEmpty().any {
+    it.name == when (type) {
+        MediaType.ANIME -> "tachiyomi.animeextension"
+        MediaType.MANGA -> "tachiyomi.extension"
+        else -> ""
+    }
+}
+```
+In Android, `pkgInfo.reqFeatures` is populated solely from `<uses-feature>` declarations in `AndroidManifest.xml`. If the extension APK omits `<uses-feature android:name="tachiyomi.animeextension" />`, `reqFeatures` does not contain the flag, and Dantotsu rejects the package as a non-extension.
+
+### 7.2 Mandatory Manifest Elements
+To guarantee recognition across Dantotsu 3.2.2, forks, and official Aniyomi runtimes, `AndroidManifest.xml` must declare:
+1. `<uses-feature android:name="tachiyomi.animeextension" />` (direct child of `<manifest>`).
+2. `android:label="Aniyomi: <Name>"` in `<application>`.
+3. `<meta-data android:name="tachiyomi.animeextension.class" android:value="<EntryClass>" />`.
+4. `<meta-data android:name="tachiyomi.animeextensionLib" android:value="14" />`.
+5. `<meta-data android:name="tachiyomi.animeextension.nsfw" android:value="0" />` and `<meta-data android:name="tachiyomi.animeextensionn.nsfw" android:value="0" />`.
+6. `<meta-data android:name="tachiyomi.animeextension.hasReadme" android:value="0" />`.
+7. `<meta-data android:name="tachiyomi.animeextension.hasChangelog" android:value="0" />`.
+

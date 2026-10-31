@@ -2,18 +2,33 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="eu.kanade.tachiyomi.animeextension.en.openmovies">
 
+    <!-- Critical feature flag required by Dantotsu isPackageAnExtension check -->
+    <uses-feature android:name="tachiyomi.animeextension" />
+
     <application
         android:label="Aniyomi: Open Movies"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:hasCode="true">
 
         <!-- Entry point class loaded by Dantotsu via PathClassLoader -->
         <meta-data
             android:name="tachiyomi.animeextension.class"
             android:value="eu.kanade.tachiyomi.animeextension.en.openmovies.OpenMovies" />
 
+        <!-- Target extension library API level -->
+        <meta-data
+            android:name="tachiyomi.animeextensionLib"
+            android:value="14" />
+
         <!-- NSFW Flag: 0 = Clean/Safe, 1 = 18+ -->
         <meta-data
             android:name="tachiyomi.animeextension.nsfw"
+            android:value="0" />
+
+        <!-- Compatibility for Dantotsu $ANIME_PACKAGE$XX_METADATA_NSFW string concatenation -->
+        <meta-data
+            android:name="tachiyomi.animeextensionn.nsfw"
             android:value="0" />
 
         <meta-data
